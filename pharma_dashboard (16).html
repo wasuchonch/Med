@@ -1,233 +1,914 @@
-<script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbzz1f3mdlscrbUYKb-LHDECVP-W4Gw2qK4Hj7vZJa3X2BFBZfiexK6rC9ZuOhDik36C/exec';
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-let SHEET_DATA = {
-  headers: [],
-  rows: [],
-  objects: [],
-  raw: []
-};
+  <title>Pharma Dashboard</title>
 
-document.addEventListener('DOMContentLoaded', function () {
-  console.log('Page loaded: auto connecting to Google Sheet...');
-  loadDataFromGoogleSheet();
-});
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-function loadDataFromGoogleSheet() {
-  showConnectionStatus('กำลังเชื่อมต่อ Google Sheet...', 'loading');
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --card2: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --line: #334155;
+      --primary: #38bdf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --white: #ffffff;
+    }
 
-  const callbackName = 'sheetCallback_' + Date.now();
+    * {
+      box-sizing: border-box;
+    }
 
-  window[callbackName] = function (result) {
-    try {
-      console.log('Google Sheet result:', result);
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans Thai", sans-serif;
+      background: radial-gradient(circle at top, #1e3a8a 0, #0f172a 42%, #020617 100%);
+      color: var(--text);
+    }
 
-      if (!result || result.status !== 'ok') {
-        throw new Error(result && result.message ? result.message : 'โหลดข้อมูลไม่สำเร็จ');
+    header {
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 14px;
+    }
+
+    main {
+      padding: 18px;
+      max-width: 1500px;
+      margin: auto;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    button, input, select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #020617;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.15s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #00111f;
+      border: none;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: #001f0b;
+      border: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      color: #fff;
+      border: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    }
+
+    .metric-title {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 30px;
+      font-weight: 800;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #bfdbfe;
+      background: rgba(30, 41, 59, 0.9);
+      position: sticky;
+      top: 96px;
+      z-index: 10;
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.06);
+    }
+
+    .status-low {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    .status-warning {
+      color: var(--warning);
+      font-weight: 800;
+    }
+
+    .status-ok {
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    .status-expired {
+      color: #fca5a5;
+      font-weight: 800;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 0.7fr 0.7fr 0.7fr 0.8fr 1fr 1fr 1.2fr auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 620px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+    }
+
+    .report {
+      display: none;
+      background: white;
+      color: #111827;
+      padding: 24px;
+      border-radius: 14px;
+      margin-top: 16px;
+    }
+
+    .report h2 {
+      margin-top: 0;
+    }
+
+    .report table th {
+      color: #111827;
+      background: #e5e7eb;
+      position: static;
+    }
+
+    .report table td, .report table th {
+      border: 1px solid #cbd5e1;
+    }
+
+    #statusBox {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 9999;
+      padding: 12px 14px;
+      border-radius: 12px;
+      display: none;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: black;
       }
 
-      SHEET_DATA = {
-        headers: result.headers || [],
-        rows: result.rows || [],
-        objects: result.objects || [],
-        raw: result.raw || []
-      };
+      header, .toolbar, .grid, .charts, .card:not(.print-area) {
+        display: none !important;
+      }
 
-      window.SHEET_DATA = SHEET_DATA;
-      window.drugData = SHEET_DATA.objects;
-      window.pharmaData = SHEET_DATA.objects;
+      main {
+        padding: 0;
+        max-width: none;
+      }
 
-      applySheetDataToDashboard(SHEET_DATA);
+      .report {
+        display: block !important;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
 
-      showConnectionStatus('เชื่อมต่อข้อมูลสำเร็จ', 'success');
+      .no-print {
+        display: none !important;
+      }
+    }
 
-      setTimeout(function () {
-        const box = document.getElementById('connectionStatus');
-        if (box) box.style.display = 'none';
-      }, 2500);
+    @media (max-width: 1100px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
 
+      .charts {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Pharma Dashboard</h1>
+    <div class="subtitle">ระบบติดตามยา ROP / ยาใกล้หมด / ยาใกล้หมดอายุ / รายงานอัตโนมัติ</div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="loadFromSheet()">โหลดข้อมูลจาก Google Sheet</button>
+      <button class="btn-success" onclick="saveToSheet()">บันทึกลง Google Sheet</button>
+      <button onclick="document.getElementById('csvFile').click()">Import CSV</button>
+      <button onclick="exportCSV()">Export CSV</button>
+      <button onclick="showDoctorReport()">รายงานแพทย์</button>
+      <button onclick="showManagerReport()">รายงานผู้บริหาร</button>
+      <button onclick="window.print()">Print / Save PDF</button>
+      <button class="btn-danger" onclick="clearLocalData()">ล้างข้อมูลบนหน้าเว็บ</button>
+
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="importCSV(event)" />
+
+      <input id="searchInput" placeholder="ค้นหาชื่อยา..." oninput="renderAll()" />
+
+      <select id="filterStatus" onchange="renderAll()">
+        <option value="">ทุกสถานะ</option>
+        <option value="ต่ำกว่า ROP">ต่ำกว่า ROP</option>
+        <option value="ใกล้หมด">ใกล้หมด</option>
+        <option value="ปกติ">ปกติ</option>
+        <option value="หมดอายุแล้ว">หมดอายุแล้ว</option>
+      </select>
+    </div>
+
+    <section class="grid">
+      <div class="card">
+        <div class="metric-title">รายการยาทั้งหมด</div>
+        <div class="metric-value" id="mTotal">0</div>
+      </div>
+      <div class="card">
+        <div class="metric-title">ต่ำกว่า ROP</div>
+        <div class="metric-value" id="mLow">0</div>
+      </div>
+      <div class="card">
+        <div class="metric-title">ยาใกล้หมด</div>
+        <div class="metric-value" id="mNearEmpty">0</div>
+      </div>
+      <div class="card">
+        <div class="metric-title">ยาใกล้หมดอายุ</div>
+        <div class="metric-value" id="mNearExpire">0</div>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="card">
+        <h3 class="panel-title">สถานะคงคลัง</h3>
+        <canvas id="statusChart"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="panel-title">รายการเร่งด่วน 10 อันดับแรก</h3>
+        <canvas id="topChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="panel-title">เพิ่มรายการยา</h3>
+
+      <div class="form-grid">
+        <input id="fDrugName" placeholder="ชื่อยา" />
+        <input id="fUnit" placeholder="หน่วย" />
+        <input id="fBalance" type="number" placeholder="คงเหลือ" />
+        <input id="fROP" type="number" placeholder="ROP" />
+        <input id="fCentral" type="number" placeholder="คลังกลาง" />
+        <input id="fExpire" type="date" />
+        <select id="fAction">
+          <option value="">การดำเนินการ</option>
+          <option value="เสนอจัดซื้อ">เสนอจัดซื้อ</option>
+          <option value="ยืมจากหน่วยงานอื่น">ยืมจากหน่วยงานอื่น</option>
+          <option value="รอรับจากคลังกลาง">รอรับจากคลังกลาง</option>
+          <option value="ติดตามบริษัท">ติดตามบริษัท</option>
+          <option value="ไม่มีการดำเนินการ">ไม่มีการดำเนินการ</option>
+        </select>
+        <input id="fDate" type="date" />
+        <button class="btn-primary" onclick="addItem()">เพิ่ม</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>ชื่อยา</th>
+              <th>หน่วย</th>
+              <th>คงเหลือ</th>
+              <th>ROP</th>
+              <th>คลังกลาง</th>
+              <th>วันหมดอายุ</th>
+              <th>สถานะ</th>
+              <th>การดำเนินการ</th>
+              <th class="no-print">ลบ</th>
+            </tr>
+          </thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="doctorReport" class="report print-area"></section>
+    <section id="managerReport" class="report print-area"></section>
+  </main>
+
+  <div id="statusBox"></div>
+
+<script>
+const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+
+let items = [];
+let statusChart = null;
+let topChart = null;
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('fDate').value = today();
+  loadFromSheet();
+});
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function showStatus(message, type = 'info') {
+  const box = document.getElementById('statusBox');
+  box.style.display = 'block';
+  box.textContent = message;
+
+  if (type === 'success') {
+    box.style.background = '#dcfce7';
+    box.style.color = '#166534';
+  } else if (type === 'error') {
+    box.style.background = '#fee2e2';
+    box.style.color = '#991b1b';
+  } else {
+    box.style.background = '#dbeafe';
+    box.style.color = '#1e40af';
+  }
+
+  setTimeout(() => {
+    box.style.display = 'none';
+  }, 3000);
+}
+
+function loadFromSheet() {
+  showStatus('กำลังโหลดข้อมูลจาก Google Sheet...', 'info');
+
+  const callbackName = 'jsonpCallback_' + Date.now();
+
+  window[callbackName] = function (res) {
+    try {
+      if (!res || !res.ok) {
+        throw new Error(res && res.message ? res.message : 'โหลดข้อมูลไม่สำเร็จ');
+      }
+
+      items = (res.items || []).map(normalizeItem);
+      renderAll();
+
+      showStatus('เชื่อมต่อและโหลดข้อมูลสำเร็จ', 'success');
     } catch (err) {
-      console.error('Google Sheet load error:', err);
-      showConnectionStatus('เชื่อมต่อข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+      console.error(err);
+      showStatus('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
     } finally {
       delete window[callbackName];
-
-      const oldScript = document.getElementById(callbackName);
-      if (oldScript) oldScript.remove();
+      const old = document.getElementById(callbackName);
+      if (old) old.remove();
     }
   };
 
   const script = document.createElement('script');
   script.id = callbackName;
   script.src = API_URL + '?callback=' + callbackName + '&t=' + Date.now();
-
   script.onerror = function () {
-    showConnectionStatus('เชื่อมต่อข้อมูลไม่สำเร็จ: โหลด API ไม่ได้', 'error');
-    delete window[callbackName];
+    showStatus('เชื่อมต่อ API ไม่ได้ กรุณาตรวจ URL / Deploy Apps Script', 'error');
   };
 
   document.body.appendChild(script);
 }
 
-function applySheetDataToDashboard(sheetData) {
-  const objects = sheetData.objects || [];
-  const rows = sheetData.rows || [];
-  const raw = sheetData.raw || [];
-
-  console.log('Apply data to dashboard:', objects);
-
-  /*
-    ระบบนี้จะพยายามเรียก function เดิมใน dashboard ให้อัตโนมัติ
-    ถ้าไฟล์เดิมมีชื่อ function เหล่านี้ จะทำงานทันที
-  */
-
-  if (typeof renderDashboard === 'function') {
-    renderDashboard(objects);
+function saveToSheet() {
+  if (!API_URL || API_URL.includes('PASTE_YOUR_WEB_APP_URL_HERE')) {
+    showStatus('กรุณาใส่ API_URL ก่อน', 'error');
     return;
   }
 
-  if (typeof updateDashboard === 'function') {
-    updateDashboard(objects);
-    return;
-  }
+  showStatus('กำลังบันทึกข้อมูลลง Google Sheet...', 'info');
 
-  if (typeof renderData === 'function') {
-    renderData(objects);
-    return;
-  }
+  const payload = {
+    mode: 'replace',
+    items: items.map(normalizeItem)
+  };
 
-  if (typeof displayMedicines === 'function') {
-    displayMedicines(objects);
-    return;
-  }
-
-  if (typeof renderTable === 'function') {
-    renderTable(objects);
-    return;
-  }
-
-  if (typeof loadDashboard === 'function') {
-    loadDashboard(objects);
-    return;
-  }
-
-  /*
-    ถ้าไม่มี function เดิมให้เรียก
-    จะแสดงข้อมูลเป็นตารางสำรองให้อัตโนมัติ
-  */
-  renderFallbackTable(sheetData);
+  fetch(API_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    showStatus('ส่งข้อมูลไปบันทึกแล้ว กำลังโหลดข้อมูลกลับมาตรวจสอบ...', 'success');
+    setTimeout(loadFromSheet, 1200);
+  })
+  .catch(err => {
+    console.error(err);
+    showStatus('บันทึกไม่สำเร็จ: ' + err.message, 'error');
+  });
 }
 
-function renderFallbackTable(sheetData) {
-  let box = document.getElementById('sheetDataBox');
+function normalizeItem(x) {
+  const item = {
+    date: x.date || today(),
+    drugName: x.drugName || '',
+    unit: x.unit || '',
+    balance: Number(x.balance || 0),
+    rop: Number(x.rop || 0),
+    centralStock: Number(x.centralStock || 0),
+    expireDate: x.expireDate || '',
+    status: x.status || '',
+    action: x.action || ''
+  };
 
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'sheetDataBox';
-    box.style.margin = '20px';
-    box.style.padding = '16px';
-    box.style.background = 'rgba(255,255,255,0.95)';
-    box.style.color = '#111827';
-    box.style.borderRadius = '14px';
-    box.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
-    document.body.appendChild(box);
-  }
+  item.status = calculateStatus(item);
+  return item;
+}
 
-  const headers = sheetData.headers || [];
-  const rows = sheetData.rows || [];
+function calculateStatus(item) {
+  if (isExpired(item.expireDate)) return 'หมดอายุแล้ว';
+  if (Number(item.balance) <= Number(item.rop)) return 'ต่ำกว่า ROP';
+  if (Number(item.rop) > 0 && Number(item.balance) <= Number(item.rop) * 1.5) return 'ใกล้หมด';
+  return 'ปกติ';
+}
 
-  if (headers.length === 0 || rows.length === 0) {
-    box.innerHTML = `
-      <h3>ข้อมูลจาก Google Sheet</h3>
-      <p>ยังไม่มีข้อมูลในชีต drug_daily</p>
-    `;
+function isExpired(dateText) {
+  if (!dateText) return false;
+  const d = new Date(dateText);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return d < now;
+}
+
+function isNearExpire(dateText) {
+  if (!dateText) return false;
+  const d = new Date(dateText);
+  const now = new Date();
+  const diff = (d - now) / (1000 * 60 * 60 * 24);
+  return diff >= 0 && diff <= 180;
+}
+
+function addItem() {
+  const item = normalizeItem({
+    date: document.getElementById('fDate').value || today(),
+    drugName: document.getElementById('fDrugName').value.trim(),
+    unit: document.getElementById('fUnit').value.trim(),
+    balance: document.getElementById('fBalance').value,
+    rop: document.getElementById('fROP').value,
+    centralStock: document.getElementById('fCentral').value,
+    expireDate: document.getElementById('fExpire').value,
+    action: document.getElementById('fAction').value
+  });
+
+  if (!item.drugName) {
+    showStatus('กรุณากรอกชื่อยา', 'error');
     return;
   }
 
-  let html = `
-    <h3 style="margin-bottom:12px;">ข้อมูลจาก Google Sheet</h3>
-    <div style="overflow:auto; max-height:500px;">
-      <table style="width:100%; border-collapse:collapse; font-size:13px;">
-        <thead>
-          <tr>
-  `;
+  items.push(item);
 
-  headers.forEach(function (h) {
-    html += `
-      <th style="border:1px solid #e5e7eb; padding:8px; background:#f3f4f6; text-align:left;">
-        ${escapeHtml(h)}
-      </th>
+  document.getElementById('fDrugName').value = '';
+  document.getElementById('fUnit').value = '';
+  document.getElementById('fBalance').value = '';
+  document.getElementById('fROP').value = '';
+  document.getElementById('fCentral').value = '';
+  document.getElementById('fExpire').value = '';
+  document.getElementById('fAction').value = '';
+
+  renderAll();
+}
+
+function deleteItem(index) {
+  items.splice(index, 1);
+  renderAll();
+}
+
+function getFilteredItems() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+
+  return items
+    .map(normalizeItem)
+    .filter(item => {
+      const matchQ = !q || item.drugName.toLowerCase().includes(q);
+      const matchStatus = !status || item.status === status;
+      return matchQ && matchStatus;
+    });
+}
+
+function renderAll() {
+  items = items.map(normalizeItem);
+  renderMetrics();
+  renderTable();
+  renderCharts();
+  hideReports();
+}
+
+function renderMetrics() {
+  const total = items.length;
+  const low = items.filter(x => x.status === 'ต่ำกว่า ROP').length;
+  const nearEmpty = items.filter(x => x.status === 'ใกล้หมด').length;
+  const nearExpire = items.filter(x => isNearExpire(x.expireDate)).length;
+
+  document.getElementById('mTotal').textContent = total;
+  document.getElementById('mLow').textContent = low;
+  document.getElementById('mNearEmpty').textContent = nearEmpty;
+  document.getElementById('mNearExpire').textContent = nearExpire;
+}
+
+function renderTable() {
+  const body = document.getElementById('dataBody');
+  const data = getFilteredItems();
+
+  body.innerHTML = data.map((item, i) => {
+    const realIndex = items.indexOf(item);
+    const cls = item.status === 'ต่ำกว่า ROP'
+      ? 'status-low'
+      : item.status === 'ใกล้หมด'
+        ? 'status-warning'
+        : item.status === 'หมดอายุแล้ว'
+          ? 'status-expired'
+          : 'status-ok';
+
+    return `
+      <tr>
+        <td>${esc(item.date)}</td>
+        <td>${esc(item.drugName)}</td>
+        <td>${esc(item.unit)}</td>
+        <td>${esc(item.balance)}</td>
+        <td>${esc(item.rop)}</td>
+        <td>${esc(item.centralStock)}</td>
+        <td>${esc(item.expireDate)}</td>
+        <td class="${cls}">${esc(item.status)}</td>
+        <td>${esc(item.action)}</td>
+        <td class="no-print">
+          <button class="btn-danger" onclick="deleteItem(${realIndex})">ลบ</button>
+        </td>
+      </tr>
     `;
+  }).join('');
+}
+
+function renderCharts() {
+  const counts = {
+    'ต่ำกว่า ROP': items.filter(x => x.status === 'ต่ำกว่า ROP').length,
+    'ใกล้หมด': items.filter(x => x.status === 'ใกล้หมด').length,
+    'ปกติ': items.filter(x => x.status === 'ปกติ').length,
+    'หมดอายุแล้ว': items.filter(x => x.status === 'หมดอายุแล้ว').length
+  };
+
+  const ctx1 = document.getElementById('statusChart');
+
+  if (statusChart) statusChart.destroy();
+
+  statusChart = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{
+        data: Object.values(counts)
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          labels: {
+            color: '#e5e7eb'
+          }
+        }
+      }
+    }
   });
 
-  html += `
+  const urgent = [...items]
+    .filter(x => x.status === 'ต่ำกว่า ROP' || x.status === 'ใกล้หมด')
+    .sort((a, b) => (a.balance - a.rop) - (b.balance - b.rop))
+    .slice(0, 10);
+
+  const ctx2 = document.getElementById('topChart');
+
+  if (topChart) topChart.destroy();
+
+  topChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: urgent.map(x => x.drugName),
+      datasets: [{
+        label: 'คงเหลือ',
+        data: urgent.map(x => x.balance)
+      }, {
+        label: 'ROP',
+        data: urgent.map(x => x.rop)
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      scales: {
+        x: {
+          ticks: { color: '#e5e7eb' },
+          grid: { color: '#334155' }
+        },
+        y: {
+          ticks: { color: '#e5e7eb' },
+          grid: { color: '#334155' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#e5e7eb'
+          }
+        }
+      }
+    }
+  });
+}
+
+function showDoctorReport() {
+  hideReports();
+
+  const report = document.getElementById('doctorReport');
+  const data = items
+    .map(normalizeItem)
+    .filter(x => !isExpired(x.expireDate))
+    .filter(x => x.status === 'ต่ำกว่า ROP' || x.status === 'ใกล้หมด' || isNearExpire(x.expireDate));
+
+  report.innerHTML = `
+    <h2>แบบฟอร์มรายงานแพทย์</h2>
+    <p>วันที่ออกรายงาน: ${today()}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ชื่อยา</th>
+          <th>คงเหลือ</th>
+          <th>ROP</th>
+          <th>คลังกลาง</th>
+          <th>วันหมดอายุ</th>
+          <th>สถานะ</th>
+          <th>การดำเนินการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(x => `
+          <tr>
+            <td>${esc(x.drugName)}</td>
+            <td>${esc(x.balance)} ${esc(x.unit)}</td>
+            <td>${esc(x.rop)} ${esc(x.unit)}</td>
+            <td>${esc(x.centralStock)} ${esc(x.unit)}</td>
+            <td>${esc(x.expireDate)}</td>
+            <td>${esc(x.status)}</td>
+            <td>${esc(x.action)}</td>
           </tr>
-        </thead>
-        <tbody>
+        `).join('')}
+      </tbody>
+    </table>
   `;
 
-  rows.forEach(function (row) {
-    html += '<tr>';
+  report.style.display = 'block';
+  report.scrollIntoView({ behavior: 'smooth' });
+}
 
-    headers.forEach(function (_, i) {
-      html += `
-        <td style="border:1px solid #e5e7eb; padding:8px;">
-          ${escapeHtml(row[i] ?? '')}
-        </td>
-      `;
+function showManagerReport() {
+  hideReports();
+
+  const report = document.getElementById('managerReport');
+
+  const low = items.filter(x => x.status === 'ต่ำกว่า ROP');
+  const nearEmpty = items.filter(x => x.status === 'ใกล้หมด');
+  const nearExpire = items.filter(x => isNearExpire(x.expireDate));
+  const expired = items.filter(x => isExpired(x.expireDate));
+
+  const data = [...low, ...nearEmpty, ...nearExpire, ...expired]
+    .filter((item, index, arr) => arr.findIndex(x => x.drugName === item.drugName && x.expireDate === item.expireDate) === index);
+
+  report.innerHTML = `
+    <h2>แบบฟอร์มรายงานผู้บริหาร</h2>
+    <p>วันที่ออกรายงาน: ${today()}</p>
+
+    <p>
+      รายการต่ำกว่า ROP: ${low.length} รายการ |
+      รายการใกล้หมด: ${nearEmpty.length} รายการ |
+      รายการใกล้หมดอายุ: ${nearExpire.length} รายการ |
+      รายการหมดอายุแล้ว: ${expired.length} รายการ
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ชื่อยา</th>
+          <th>คงเหลือ</th>
+          <th>ROP</th>
+          <th>คลังกลาง</th>
+          <th>วันหมดอายุ</th>
+          <th>สถานะ</th>
+          <th>การดำเนินการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(x => `
+          <tr>
+            <td>${esc(x.drugName)}</td>
+            <td>${esc(x.balance)} ${esc(x.unit)}</td>
+            <td>${esc(x.rop)} ${esc(x.unit)}</td>
+            <td>${esc(x.centralStock)} ${esc(x.unit)}</td>
+            <td>${esc(x.expireDate)}</td>
+            <td>${esc(x.status)}</td>
+            <td>${esc(x.action)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  report.style.display = 'block';
+  report.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideReports() {
+  document.getElementById('doctorReport').style.display = 'none';
+  document.getElementById('managerReport').style.display = 'none';
+}
+
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+
+    if (rows.length < 2) {
+      showStatus('CSV ไม่มีข้อมูล', 'error');
+      return;
+    }
+
+    const headers = rows[0].map(x => x.trim());
+    const dataRows = rows.slice(1);
+
+    const imported = dataRows.map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = row[i] || '');
+      return normalizeItem(obj);
     });
 
-    html += '</tr>';
+    items = imported;
+    renderAll();
+    showStatus('Import CSV สำเร็จ', 'success');
+  };
+
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(x => x.trim() !== '');
+  return lines.map(line => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current);
+    return result.map(x => x.replace(/^"|"$/g, '').trim());
   });
-
-  html += `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  box.innerHTML = html;
 }
 
-function showConnectionStatus(message, type) {
-  let box = document.getElementById('connectionStatus');
+function exportCSV() {
+  const headers = [
+    'date',
+    'drugName',
+    'unit',
+    'balance',
+    'rop',
+    'centralStock',
+    'expireDate',
+    'status',
+    'action'
+  ];
 
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'connectionStatus';
-    box.style.position = 'fixed';
-    box.style.top = '12px';
-    box.style.right = '12px';
-    box.style.zIndex = '99999';
-    box.style.padding = '10px 14px';
-    box.style.borderRadius = '10px';
-    box.style.fontSize = '14px';
-    box.style.fontWeight = '600';
-    box.style.boxShadow = '0 4px 12px rgba(0,0,0,0.22)';
-    box.style.fontFamily = 'Arial, sans-serif';
-    document.body.appendChild(box);
-  }
+  const csv = [
+    headers.join(','),
+    ...items.map(item => headers.map(h => `"${String(item[h] ?? '').replaceAll('"', '""')}"`).join(','))
+  ].join('\n');
 
-  box.style.display = 'block';
-  box.textContent = message;
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
 
-  if (type === 'success') {
-    box.style.background = '#d1fae5';
-    box.style.color = '#065f46';
-    box.style.border = '1px solid #10b981';
-  } else if (type === 'error') {
-    box.style.background = '#fee2e2';
-    box.style.color = '#991b1b';
-    box.style.border = '1px solid #ef4444';
-  } else {
-    box.style.background = '#e0f2fe';
-    box.style.color = '#075985';
-    box.style.border = '1px solid #0ea5e9';
-  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pharma_dashboard.csv';
+  a.click();
+
+  URL.revokeObjectURL(url);
 }
 
-function escapeHtml(value) {
-  return String(value)
+function clearLocalData() {
+  if (!confirm('ต้องการล้างข้อมูลบนหน้าเว็บใช่หรือไม่? ยังไม่ลบข้อมูลใน Google Sheet จนกว่าจะกดบันทึก')) return;
+  items = [];
+  renderAll();
+}
+
+function esc(value) {
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -235,3 +916,6 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 </script>
+
+</body>
+</html>
